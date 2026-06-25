@@ -1,0 +1,8 @@
+{
+  "name": "A.S.E.S.S - AUI",
+  "description": "Academic Success Evaluation and Support System",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
