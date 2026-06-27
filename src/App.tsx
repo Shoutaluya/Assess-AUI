@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Brain, AlertTriangle, CheckCircle2, RefreshCcw, Users, CalendarCheck, TrendingUp, Menu, X } from 'lucide-react';
-import { ResponsiveContainer, ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, BarChart, Bar } from 'recharts';
+import { Brain, AlertTriangle, CheckCircle2, RefreshCcw, Users, CalendarCheck, TrendingUp, Menu, X, UploadCloud, Activity, FileText, ChevronRight, Loader2, Sparkles, BookOpen } from 'lucide-react';
+import { ResponsiveContainer, ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, BarChart, Bar, LineChart, Line, Legend } from 'recharts';
 import { decisionTreePredict, randomForestPredict, svmPredict } from './lib/inference';
 
 export default function App() {
@@ -35,7 +35,7 @@ export default function App() {
             </div>
           </div>
           
-          <div className="hidden md:flex items-center gap-1 bg-slate-100 p-1 rounded-lg border border-slate-200 ml-4">
+          <div className="hidden lg:flex items-center gap-1 bg-slate-100 p-1 rounded-lg border border-slate-200 ml-4">
             <button 
               onClick={() => setActiveView('student')}
               className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all ${activeView === 'student' ? 'bg-white text-[#223E77] shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
@@ -60,7 +60,9 @@ export default function App() {
             </div>
           </div>
           <button 
-            onClick={() => setIsDrawerOpen(true)}
+            onClick={() => {
+              if (activeView === 'student') setIsDrawerOpen(true);
+            }}
             className="flex items-center gap-3 bg-slate-100 hover:bg-slate-200 border border-slate-200 px-4 py-2 rounded-full shadow-sm transition-colors"
           >
             <Menu className="w-4 h-4 text-[#223E77]" />
@@ -68,6 +70,22 @@ export default function App() {
           </button>
         </div>
       </header>
+
+      {/* Mobile Nav */}
+      <div className="lg:hidden flex border-b border-slate-200 bg-white shrink-0">
+        <button 
+          onClick={() => setActiveView('student')}
+          className={`flex-1 py-3 text-xs font-bold transition-all border-b-2 ${activeView === 'student' ? 'border-[#223E77] text-[#223E77]' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+        >
+          Student Evaluator
+        </button>
+        <button 
+          onClick={() => setActiveView('educator')}
+          className={`flex-1 py-3 text-xs font-bold transition-all border-b-2 ${activeView === 'educator' ? 'border-[#223E77] text-[#223E77]' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+        >
+          Educator View
+        </button>
+      </div>
 
       {activeView === 'student' ? <StudentEvaluator setCounter={setCounter} isDrawerOpen={isDrawerOpen} setIsDrawerOpen={setIsDrawerOpen} /> : <EducatorDashboard />}
     </div>
@@ -101,11 +119,11 @@ function StudentEvaluator({ setCounter, isDrawerOpen, setIsDrawerOpen }: { setCo
         value = '';
       } else {
         value = Number(value);
-        if (e.target.name === 'continuous_assessment') value = Math.min(40, Math.max(0, value));
-        else if (e.target.name === 'exam_score') value = Math.min(60, Math.max(0, value));
-        else if (e.target.name === 'attendance') value = Math.min(100, Math.max(0, value));
-        else if (e.target.name === 'study_hours') value = Math.min(24, Math.max(0, value));
-        else if (e.target.name === 'age') value = Math.min(40, Math.max(15, value));
+        if (e.target.name === 'continuous_assessment') value = Math.min(40, value as number);
+        else if (e.target.name === 'exam_score') value = Math.min(60, value as number);
+        else if (e.target.name === 'attendance') value = Math.min(100, value as number);
+        else if (e.target.name === 'study_hours') value = Math.min(24, value as number);
+        else if (e.target.name === 'age') value = Math.min(45, value as number);
       }
     }
 
@@ -317,7 +335,7 @@ function StudentEvaluator({ setCounter, isDrawerOpen, setIsDrawerOpen }: { setCo
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Age</label>
-                        <input type="number" min={15} max={40} name="age" value={formData.age} onChange={handleChange} className="w-full bg-white p-2 rounded border border-slate-200 text-sm font-mono text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#223E77]/20 focus:border-[#223E77]" />
+                        <input type="number" min={10} max={45} name="age" value={formData.age} onChange={handleChange} className="w-full bg-white p-2 rounded border border-slate-200 text-sm font-mono text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#223E77]/20 focus:border-[#223E77]" />
                       </div>
                       <div>
                         <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Level</label>
@@ -613,12 +631,14 @@ function StudentEvaluator({ setCounter, isDrawerOpen, setIsDrawerOpen }: { setCo
 }
 
 function EducatorDashboard() {
-  const kpis = { totalRecords: 1248, avgAttendance: 82.4, meanScore: 68.5, atRisk: 142 };
+  const [kpis, setKpis] = useState({ totalRecords: 1248, avgAttendance: 82.4, meanScore: 68.5, atRisk: 142 });
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState<any>(null);
   
-  const scatterData = Array.from({length: 80}).map((_, i) => ({
+  const [scatterData, setScatterData] = useState(() => Array.from({length: 80}).map((_, i) => ({
     attendance: parseFloat((40 + Math.random() * 60).toFixed(1)),
     score: parseFloat((30 + Math.random() * 70).toFixed(1)),
-  }));
+  })));
   
   const barData = [
     { dept: 'Computer Sci', score: 72 },
@@ -628,12 +648,55 @@ function EducatorDashboard() {
     { dept: 'Engineering', score: 70 },
   ];
   
-  const flagged = [
+  const [flagged, setFlagged] = useState([
     { id: 'AUI/21/1042', name: 'Oluwaseun Adeyemi', dept: 'Economics', level: 200, attendance: 45, score: 38 },
     { id: 'AUI/22/0891', name: 'Chidera Nwankwo', dept: 'Computer Sci', level: 100, attendance: 52, score: 41 },
     { id: 'AUI/20/3312', name: 'Fatima Ibrahim', dept: 'Bus. Admin', level: 300, attendance: 38, score: 45 },
     { id: 'AUI/19/0421', name: 'Emeka Okonkwo', dept: 'Engineering', level: 400, attendance: 60, score: 39 },
-  ];
+  ]);
+
+  const handleSync = () => {
+    setIsSyncing(true);
+    setTimeout(() => {
+      setIsSyncing(false);
+      setKpis({ totalRecords: 1420, avgAttendance: 81.2, meanScore: 67.8, atRisk: 156 });
+      setFlagged(prev => [
+        { id: 'AUI/23/1102', name: 'Zainab Aliyu', dept: 'Economics', level: 100, attendance: 35, score: 32 },
+        { id: 'AUI/21/2045', name: 'David Okafor', dept: 'Computer Sci', level: 300, attendance: 48, score: 36 },
+        ...prev
+      ]);
+      setScatterData(prev => [...prev, ...Array.from({length: 20}).map((_, i) => ({
+        attendance: parseFloat((30 + Math.random() * 60).toFixed(1)),
+        score: parseFloat((25 + Math.random() * 60).toFixed(1)),
+      }))]);
+    }, 2000);
+  };
+
+  const getInterventionPlan = (student: any) => {
+    let plan = [];
+    if (student.attendance < 50) {
+      plan.push({ action: "Schedule immediate counseling outreach", reason: "Critical Attendance Deficit" });
+    }
+    if (student.score < 40) {
+      plan.push({ action: "Assign peer tutoring sessions", reason: "Low Academic Performance" });
+    }
+    if (student.level === 100) {
+      plan.push({ action: "Enroll in Freshmen Transition Program", reason: "First-Year Adaptation Risk" });
+    }
+    if (plan.length === 0) {
+      plan.push({ action: "General academic advising", reason: "Routine check-in" });
+    }
+    return plan;
+  };
+
+  const getLongitudinalData = (student: any) => {
+    return [
+      { week: 'W1', attendance: Math.min(100, student.attendance + 20), score: Math.min(100, student.score + 15) },
+      { week: 'W3', attendance: Math.min(100, student.attendance + 15), score: Math.min(100, student.score + 10) },
+      { week: 'W5', attendance: Math.min(100, student.attendance + 5), score: Math.min(100, student.score + 5) },
+      { week: 'W7', attendance: student.attendance, score: student.score },
+    ];
+  };
 
   return (
     <motion.div 
@@ -641,9 +704,19 @@ function EducatorDashboard() {
       className="flex-1 overflow-y-auto w-full p-4 md:p-8 space-y-6 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-slate-300 [&::-webkit-scrollbar-thumb]:rounded-full"
     >
       <div className="max-w-7xl mx-auto space-y-6">
-        <div className="mb-2">
-          <h2 className="text-2xl font-bold text-slate-800">Institutional Analytics</h2>
-          <p className="text-sm text-slate-500">Aggregate view of student performance vectors and early intervention flags.</p>
+        <div className="mb-2 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div>
+            <h2 className="text-2xl font-bold text-slate-800">Institutional Analytics</h2>
+            <p className="text-sm text-slate-500">Aggregate view of student performance vectors and early intervention flags.</p>
+          </div>
+          <button 
+            onClick={handleSync}
+            disabled={isSyncing}
+            className="flex items-center gap-2 bg-[#223E77] text-white px-4 py-2 rounded-xl text-sm font-bold shadow-md hover:bg-[#1a305d] transition-colors disabled:opacity-70 shrink-0"
+          >
+            {isSyncing ? <Loader2 className="w-4 h-4 animate-spin" /> : <UploadCloud className="w-4 h-4" />}
+            {isSyncing ? 'Ingesting Batch Data...' : 'Sync with LMS'}
+          </button>
         </div>
         
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -704,8 +777,8 @@ function EducatorDashboard() {
                </thead>
                <tbody className="divide-y divide-slate-100 bg-white">
                  {flagged.map((s, i) => (
-                   <tr key={i} className="hover:bg-slate-50 transition-colors">
-                     <td className="px-6 py-4 font-mono text-xs text-slate-600">{s.id}</td>
+                   <tr key={i} onClick={() => setSelectedStudent(s)} className="hover:bg-slate-50 transition-colors cursor-pointer group">
+                     <td className="px-6 py-4 font-mono text-xs text-slate-600 group-hover:text-[#223E77] transition-colors">{s.id}</td>
                      <td className="px-6 py-4 font-bold text-slate-800">{s.name}</td>
                      <td className="px-6 py-4 text-slate-600 font-medium">{s.dept}</td>
                      <td className="px-6 py-4 text-slate-600 font-medium">{s.level}L</td>
@@ -718,6 +791,89 @@ function EducatorDashboard() {
           </div>
         </div>
       </div>
+
+      <AnimatePresence>
+        {selectedStudent && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              onClick={() => setSelectedStudent(null)}
+              className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }} 
+              animate={{ opacity: 1, scale: 1, y: 0 }} 
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-4xl overflow-hidden flex flex-col max-h-[90vh]"
+            >
+              <div className="p-6 border-b border-slate-100 flex items-start justify-between bg-slate-50">
+                <div>
+                  <h3 className="text-xl font-bold text-slate-800">{selectedStudent.name}</h3>
+                  <div className="flex items-center gap-3 mt-1 text-sm text-slate-500 font-medium">
+                    <span className="font-mono bg-white px-2 py-0.5 rounded border border-slate-200">{selectedStudent.id}</span>
+                    <span>{selectedStudent.dept}</span>
+                    <span>{selectedStudent.level}L</span>
+                  </div>
+                </div>
+                <button onClick={() => setSelectedStudent(null)} className="p-2 bg-white hover:bg-slate-100 rounded-full text-slate-500 transition-colors">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              
+              <div className="p-6 overflow-y-auto flex-1 bg-slate-50/50">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  
+                  {/* Intervention Planner */}
+                  <div className="space-y-4">
+                    <h4 className="text-sm font-bold text-slate-700 uppercase tracking-wide flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-[#D4AF37]" />
+                      Actionable Intervention Plan
+                    </h4>
+                    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                      {getInterventionPlan(selectedStudent).map((plan, i) => (
+                        <div key={i} className="p-4 border-b border-slate-100 last:border-0 flex gap-4 items-start">
+                          <div className="w-8 h-8 rounded-full bg-indigo-50 flex items-center justify-center shrink-0">
+                            <span className="text-indigo-600 font-bold text-sm">{i + 1}</span>
+                          </div>
+                          <div>
+                            <p className="font-bold text-slate-800 text-sm">{plan.action}</p>
+                            <p className="text-xs text-slate-500 mt-1 flex items-center gap-1">
+                              <AlertTriangle className="w-3 h-3 text-amber-500" />
+                              {plan.reason}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Longitudinal Trends */}
+                  <div className="space-y-4">
+                    <h4 className="text-sm font-bold text-slate-700 uppercase tracking-wide flex items-center gap-2">
+                      <Activity className="w-4 h-4 text-[#223E77]" />
+                      Longitudinal Trajectory
+                    </h4>
+                    <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 h-[250px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={getLongitudinalData(selectedStudent)} margin={{ top: 5, right: 10, bottom: 5, left: -20 }}>
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                          <XAxis dataKey="week" tick={{fill: '#64748b', fontSize: 11}} />
+                          <YAxis tick={{fill: '#64748b', fontSize: 12}} domain={[0, 100]} />
+                          <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                          <Legend iconType="circle" wrapperStyle={{ fontSize: '12px' }} />
+                          <Line type="monotone" dataKey="attendance" name="Attendance" stroke="#223E77" strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                          <Line type="monotone" dataKey="score" name="CA Score" stroke="#D4AF37" strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+                  
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </motion.div>
   )
 }
