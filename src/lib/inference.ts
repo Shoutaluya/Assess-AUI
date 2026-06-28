@@ -77,3 +77,25 @@ export function svmPredict(features: StudentFeatures): number {
     // Apply sigmoid function to map distance to a probability [0, 1]
     return 1 / (1 + Math.exp(-z));
 }
+
+export function linearRegressionPredict(features: StudentFeatures): number {
+    // Linear Regression approximation mapping features to a predicted score
+    // Normalizing inputs
+    const caNorm = features.continuous_assessment / 40; // 0-1
+    const examNorm = features.exam_score / 60; // 0-1
+    const attNorm = features.attendance / 100; // 0-1
+    const studyNorm = Math.min(features.study_hours / 10, 1); // 0-1
+    
+    // Weights based on Linear Regression coefficients
+    const w = {
+        ca: 0.35,
+        exam: 0.40,
+        att: 0.15,
+        study: 0.10
+    };
+    
+    // Calculate predicted score
+    const score = (caNorm * w.ca) + (examNorm * w.exam) + (attNorm * w.att) + (studyNorm * w.study);
+    
+    return Math.max(0, Math.min(1, score));
+}
